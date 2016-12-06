@@ -183,14 +183,14 @@ class Deb::S3::CLI < Thor
       # examine all the files
       files.collect { |f| Dir.glob(f) }.flatten.each do |file|
         log("Examining package file #{File.basename(file)}")
-        pkg = Deb::S3::Package.parse_file(file)
+        pkg = Deb::S3::Package.parse_file(file, component)
 
         # copy over some options if they weren't given
         arch = options[:arch] || pkg.architecture
 
         # If they've specified an arch type that doesn't match the package let them know
         if options.key?("arch") && options[:arch] != pkg.architecture
-          warn("You specified architecture #{options[:arch]} but package #{pkg.name} has architecture type of #{pkg.architecture}") 
+          warn("You specified architecture #{options[:arch]} but package #{pkg.name} has architecture type of #{pkg.architecture}")
         end
 
         # validate we have them

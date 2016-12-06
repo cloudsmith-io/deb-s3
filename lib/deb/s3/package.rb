@@ -37,15 +37,17 @@ class Deb::S3::Package
   attr_accessor :size
 
   attr_accessor :filename
+  attr_accessor :component
 
   class << self
     include Deb::S3::Utils
 
-    def parse_file(package)
+    def parse_file(package, component)
       p = self.new
       p.extract_info(extract_control(package))
       p.apply_file_info(package)
       p.filename = package
+      p.component = component
       p
     end
 
@@ -112,6 +114,7 @@ class Deb::S3::Package
     @md5 = nil
     @size = nil
     @filename = nil
+    @component = nil
     @url_filename = nil
 
     @dependencies = []
@@ -128,11 +131,11 @@ class Deb::S3::Package
   end
 
   def url_filename
-    @url_filename || "pool/#{self.name[0]}/#{self.name[0..1]}/#{File.basename(self.filename)}"
+    @url_filename || "pool/#{self.component}/#{self.name[0]}/#{self.name[0..1]}/#{File.basename(self.filename)}"
   end
 
   def url_filename_encoded
-    @url_filename || "pool/#{self.name[0]}/#{self.name[0..1]}/#{s3_escape(File.basename(self.filename))}"
+    @url_filename || "pool/#{self.component}/#{self.name[0]}/#{self.name[0..1]}/#{s3_escape(File.basename(self.filename))}"
   end
 
   def generate

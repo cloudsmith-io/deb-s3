@@ -39,10 +39,13 @@ Section: <%= category %>
 Origin: <%= attributes[:deb_origin] %>
 <% end -%>
 Priority: <%= attributes[:deb_priority] %>
-Homepage: <%= url or "http://nourlgiven.example.com/" %>
+Homepage: <%= url or "https://cloudsmith.io/" %>
 Filename: <%= url_filename_encoded %>
 <% if size -%>
 Size: <%= size %>
+<% end -%>
+<% if md5 -%>
+MD5sum: <%= md5 %>
 <% end -%>
 <% if sha1 -%>
 SHA1: <%= sha1 %>
@@ -50,10 +53,10 @@ SHA1: <%= sha1 %>
 <% if sha256 -%>
 SHA256: <%= sha256 %>
 <% end -%>
-<% if md5 -%>
-MD5sum: <%= md5 %>
+<% if sha512 -%>
+SHA512: <%= sha512 %>
 <% end -%>
-<% lines = (description or "no description given").split("\n") -%>
+<% lines = (description or "No description given").split("\n") -%>
 <% firstline, *remainder = lines -%>
 Description: <%= firstline %>
 <% if remainder.any? -%>

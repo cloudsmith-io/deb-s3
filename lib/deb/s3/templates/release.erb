@@ -6,6 +6,10 @@ Date: <%= Time.now.utc.strftime("%a, %d %b %Y %T %Z") %>
 Architectures: <%= architectures.join(" ") %>
 Components: <%= components.join(" ") %>
 Suite: <%= suite %>
+<% if signing_key -%>
+Signed-By: <%= signing_key %>
+<% end -%>
+Acquire-By-Hash: <%= acquire_by_hash ? 'yes' : 'no' %>
 MD5Sum:
 <% files.sort.each do |f,p| -%>
  <%= p[:md5] %> <%= p[:size].to_s.rjust(16) %> <%= f %>

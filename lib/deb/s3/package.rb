@@ -33,6 +33,7 @@ class Deb::S3::Package
   attr_accessor :url_filename
   attr_accessor :sha1
   attr_accessor :sha256
+  attr_accessor :sha512
   attr_accessor :md5
   attr_accessor :size
 
@@ -111,6 +112,7 @@ class Deb::S3::Package
     @vendor = "none"
     @sha1 = nil
     @sha256 = nil
+    @sha512 = nil
     @md5 = nil
     @size = nil
     @filename = nil
@@ -248,6 +250,7 @@ class Deb::S3::Package
     self.url_filename = filename && URI.unescape(filename)
     self.sha1 = fields.delete('SHA1')
     self.sha256 = fields.delete('SHA256')
+    self.sha512 = fields.delete('SHA512')
     self.md5 = fields.delete('MD5sum')
     self.size = fields.delete('Size')
     self.description = fields.delete('Description')
@@ -274,7 +277,8 @@ class Deb::S3::Package
   def apply_file_info(file)
     self.size = File.size(file)
     self.sha1 = Digest::SHA1.file(file).hexdigest
-    self.sha256 = Digest::SHA2.file(file).hexdigest
+    self.sha256 = Digest::SHA256.file(file).hexdigest
+    self.sha512 = Digest::SHA512.file(file).hexdigest
     self.md5 = Digest::MD5.file(file).hexdigest
   end
 

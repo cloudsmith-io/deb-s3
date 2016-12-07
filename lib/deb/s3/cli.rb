@@ -14,134 +14,145 @@ require "deb/s3/lock"
 
 class Deb::S3::CLI < Thor
   class_option :bucket,
-  :type     => :string,
-  :aliases  => "-b",
-  :desc     => "The name of the S3 bucket to upload to."
+    :type     => :string,
+    :aliases  => "-b",
+    :desc     => "The name of the S3 bucket to upload to."
 
   class_option :prefix,
-  :type     => :string,
-  :desc     => "The path prefix to use when storing on S3."
+    :type     => :string,
+    :desc     => "The path prefix to use when storing on S3."
 
   class_option :origin,
-  :type     => :string,
-  :aliases  => "-o",
-  :desc     => "The origin to use in the repository Release file."
+    :type     => :string,
+    :aliases  => "-o",
+    :desc     => "The origin to use in the repository Release file."
 
   class_option :suite,
-  :type     => :string,
-  :desc     => "The suite to use in the repository Release file."
+    :type     => :string,
+    :desc     => "The suite to use in the repository Release file."
 
   class_option :codename,
-  :default  => "stable",
-  :type     => :string,
-  :aliases  => "-c",
-  :desc     => "The codename of the APT repository."
+    :default  => "stable",
+    :type     => :string,
+    :aliases  => "-c",
+    :desc     => "The codename of the APT repository."
 
   class_option :component,
-  :default  => "main",
-  :type     => :string,
-  :aliases  => "-m",
-  :desc     => "The component of the APT repository."
+    :default  => "main",
+    :type     => :string,
+    :aliases  => "-m",
+    :desc     => "The component of the APT repository."
 
   class_option :section,
-  :type     => :string,
-  :aliases  => "-s",
-  :hide     => true
+    :type     => :string,
+    :aliases  => "-s",
+    :hide     => true
 
   class_option :access_key_id,
-  :type     => :string,
-  :desc     => "The access key for connecting to S3."
+    :type     => :string,
+    :desc     => "The access key for connecting to S3."
 
   class_option :secret_access_key,
-  :type     => :string,
-  :desc     => "The secret key for connecting to S3."
+    :type     => :string,
+    :desc     => "The secret key for connecting to S3."
 
   class_option :endpoint,
-  :type     => :string,
-  :desc     => "The region endpoint for connecting to S3.",
-  :default  => "s3.amazonaws.com"
+    :type     => :string,
+    :desc     => "The region endpoint for connecting to S3.",
+    :default  => "s3.amazonaws.com"
 
   class_option :force_path_style,
-  :default  => false,
-  :type     => :boolean,
-  :desc     => "Use S3 path style instead of subdomains."
+    :default  => false,
+    :type     => :boolean,
+    :desc     => "Use S3 path style instead of subdomains."
 
   class_option :proxy_uri,
-  :type     => :string,
-  :desc     => "The URI of the proxy to send service requests through."
+    :type     => :string,
+    :desc     => "The URI of the proxy to send service requests through."
 
   class_option :use_ssl,
-  :default  => true,
-  :type     => :boolean,
-  :desc     => "Whether to use HTTP or HTTPS for request transport."
+    :default  => true,
+    :type     => :boolean,
+    :desc     => "Whether to use HTTP or HTTPS for request transport."
 
   class_option :visibility,
-  :default  => "public",
-  :type     => :string,
-  :aliases  => "-v",
-  :desc     => "The access policy for the uploaded files. " +
-    "Can be public, private, or authenticated."
+    :default  => "public",
+    :type     => :string,
+    :aliases  => "-v",
+    :desc     => "The access policy for the uploaded files. " +
+      "Can be public, private, or authenticated."
 
   class_option :sign,
-  :type     => :string,
-  :desc     => "Sign the Release file when uploading a package, " +
-    "or when verifying it after removing a package. " +
-    "Use --sign with your key ID to use a specific key."
+    :type     => :string,
+    :desc     => "Sign the Release file when uploading a package, " +
+      "or when verifying it after removing a package. " +
+      "Use --sign with your key ID to use a specific key."
 
   class_option :gpg_options,
-  :default => "",
-  :type    => :string,
-  :desc    => "Additional command line options to pass to GPG when signing."
+    :default => "",
+    :type    => :string,
+    :desc    => "Additional command line options to pass to GPG when signing."
 
   class_option :encryption,
-  :default  => false,
-  :type     => :boolean,
-  :aliases  => "-e",
-  :desc     => "Use S3 server side encryption."
+    :default  => false,
+    :type     => :boolean,
+    :aliases  => "-e",
+    :desc     => "Use S3 server side encryption."
 
   class_option :quiet,
-  :type => :boolean,
-  :aliases => "-q",
-  :desc => "Doesn't output information, just returns status appropriately."
+    :type => :boolean,
+    :aliases => "-q",
+    :desc => "Doesn't output information, just returns status appropriately."
 
   class_option :cache_control,
-  :type     => :string,
-  :aliases  => "-C",
-  :desc     => "Add cache-control headers to S3 objects."
+    :type     => :string,
+    :aliases  => "-C",
+    :desc     => "Add cache-control headers to S3 objects."
+
+  class_option :supported_archs,
+    :default  => %w(amd64 i383 armhf),
+    :type     => :array,
+    :aliases  => "-A",
+    :desc     => "A CSV of supported architectures."
+
+  class_option :acquire_by_hash,
+    :default  => true,
+    :type     => :boolean,
+    :desc     => "Whether to support Acquire-by-Hash for package manifests."
 
   desc "upload FILES",
-  "Uploads the given files to a S3 bucket as an APT repository."
+    "Uploads the given files to a S3 bucket as an APT repository."
 
   option :arch,
-  :type     => :string,
-  :aliases  => "-a",
-  :desc     => "The architecture of the package in the APT repository."
+    :type     => :string,
+    :aliases  => "-a",
+    :desc     => "The architecture of the package in the APT repository."
 
   option :preserve_versions,
-  :default  => false,
-  :type     => :boolean,
-  :aliases  => "-p",
-  :desc     => "Whether to preserve other versions of a package " +
-    "in the repository when uploading one."
+    :default  => false,
+    :type     => :boolean,
+    :aliases  => "-p",
+    :desc     => "Whether to preserve other versions of a package " +
+      "in the repository when uploading one."
 
   option :lock,
-  :default  => false,
-  :type     => :boolean,
-  :aliases  => "-l",
-  :desc     => "Whether to check for an existing lock on the repository " +
-    "to prevent simultaneous updates "
+    :default  => false,
+    :type     => :boolean,
+    :aliases  => "-l",
+    :desc     => "Whether to check for an existing lock on the repository " +
+      "to prevent simultaneous updates "
 
   option :fail_if_exists,
-  :default  => false,
-  :type     => :boolean,
-  :desc     => "Whether to overwrite any existing package that has the same " +
-    "filename in the pool or the same name and version in the manifest."
+    :default  => false,
+    :type     => :boolean,
+    :desc     => "Whether to overwrite any existing package that has the same " +
+      "filename in the pool or the same name and version in the manifest."
 
   option :skip_package_upload,
-  :default  => false,
-  :type     => :boolean,
-  :desc     => "Whether to skip all package uploads." +
-    "This is useful when hosting .deb files outside of the bucket."
+    :default  => false,
+    :type     => :boolean,
+    :desc     => "Whether to skip all package uploads." +
+      "This is useful when hosting .deb files outside of the bucket."
 
   def upload(*files)
     if files.nil? || files.empty?
@@ -172,10 +183,16 @@ class Deb::S3::CLI < Thor
 
       # retrieve the existing manifests
       log("Retrieving existing manifests")
-      release  = Deb::S3::Release.retrieve(options[:codename], options[:origin], options[:suite], options[:cache_control])
+      release  = Deb::S3::Release.retrieve(
+        options[:codename], options[:origin], options[:suite],
+        options[:cache_control], options[:acquire_by_hash],
+        options[:supported_archs])
       manifests = {}
       release.architectures.each do |arch|
-        manifests[arch] = Deb::S3::Manifest.retrieve(options[:codename], component, arch, options[:cache_control], options[:fail_if_exists], options[:skip_package_upload])
+        manifests[arch] = Deb::S3::Manifest.retrieve(
+          options[:codename], component, arch, options[:cache_control],
+          options[:fail_if_exists], options[:skip_package_upload],
+          options[:acquire_by_hash])
       end
 
       packages_arch_all = []
@@ -193,9 +210,11 @@ class Deb::S3::CLI < Thor
           warn("You specified architecture #{options[:arch]} but package #{pkg.name} has architecture type of #{pkg.architecture}")
         end
 
+        valid_archs = options[:supported_archs].join('|')
+
         # validate we have them
         error("No architcture given and unable to determine one for #{file}. " +
-              "Please specify one with --arch [i386|amd64|armhf].") unless arch
+              "Please specify one with --arch [#{valid_archs}].") unless arch
 
         # If the arch is all and the list of existing manifests is none, then
         # throw an error. This is mainly the case when initializing a brand new
@@ -204,12 +223,14 @@ class Deb::S3::CLI < Thor
           error("Package #{File.basename(file)} had architecture \"all\", " +
                 "however noexisting package lists exist. This can often happen " +
                 "if the first package you are add to a new repository is an " +
-                "\"all\" architecture file. Please use --arch [i386|amd64|armhf] or " +
+                "\"all\" architecture file. Please use --arch [#{valid_archs}] or " +
                 "another platform type to upload the file.")
         end
 
         # retrieve the manifest for the arch if we don't have it already
-        manifests[arch] ||= Deb::S3::Manifest.retrieve(options[:codename], component, arch, options[:cache_control], options[:fail_if_exists])
+        manifests[arch] ||= Deb::S3::Manifest.retrieve(
+          options[:codename], component, arch, options[:cache_control],
+          options[:fail_if_exists], false, options[:acquire_by_hash])
 
         # add package in manifests
         begin
@@ -259,15 +280,15 @@ class Deb::S3::CLI < Thor
   desc "list", "Lists packages in given codename, component, and optionally architecture"
 
   option :long,
-  :type     => :boolean,
-  :aliases  => '-l',
-  :desc     => "Shows all package information in original format.",
-  :default  => false
+    :type     => :boolean,
+    :aliases  => '-l',
+    :desc     => "Shows all package information in original format.",
+    :default  => false
 
   option :arch,
-  :type     => :string,
-  :aliases  => "-a",
-  :desc     => "The architecture of the package in the APT repository."
+    :type     => :string,
+    :aliases  => "-a",
+    :desc     => "The architecture of the package in the APT repository."
 
   def list
     configure_s3_client
@@ -277,9 +298,9 @@ class Deb::S3::CLI < Thor
     archs &= [options[:arch]] if options[:arch] && options[:arch] != "all"
     widths = [0, 0]
     rows = archs.map { |arch|
-      manifest = Deb::S3::Manifest.retrieve(options[:codename], component,
-                                            arch, options[:cache_control],
-                                            false)
+      manifest = Deb::S3::Manifest.retrieve(
+        options[:codename], component, arch, options[:cache_control],
+        false, options[:acquire_by_hash])
       manifest.packages.map do |package|
         if options[:long]
           package.generate
@@ -318,8 +339,9 @@ class Deb::S3::CLI < Thor
     configure_s3_client
 
     # retrieve the existing manifests
-    manifest = Deb::S3::Manifest.retrieve(options[:codename], component, arch,
-                                          options[:cache_control], false)
+    manifest = Deb::S3::Manifest.retrieve(
+      options[:codename], component, arch, options[:cache_control],
+      false, options[:acquire_by_hash])
     package = manifest.packages.detect { |p|
       p.name == package_name && p.full_version == version
     }
@@ -334,9 +356,9 @@ class Deb::S3::CLI < Thor
     "Copy the package named PACKAGE to given codename and component. If --versions is not specified, copy all versions of PACKAGE. Otherwise, only the specified versions will be copied. Source codename and component is given by --codename and --component options."
 
   option :cache_control,
-  :type     => :string,
-  :aliases  => "-C",
-  :desc     => "Add cache-control headers to S3 objects."
+    :type     => :string,
+    :aliases  => "-C",
+    :desc     => "Add cache-control headers to S3 objects."
 
   option :arch,
     :type     => :string,
@@ -358,10 +380,10 @@ class Deb::S3::CLI < Thor
     "in the repository when uploading one."
 
   option :fail_if_exists,
-  :default  => true,
-  :type     => :boolean,
-  :desc     => "Whether to overwrite any existing package that has the same " +
-    "filename in the pool or the same name and version in the manifest."
+    :default  => true,
+    :type     => :boolean,
+    :desc     => "Whether to overwrite any existing package that has the same " +
+      "filename in the pool or the same name and version in the manifest."
 
   def copy(package_name, to_codename, to_component)
     if package_name.nil?
@@ -390,14 +412,15 @@ class Deb::S3::CLI < Thor
 
     # retrieve the existing manifests
     log "Retrieving existing manifests"
-    from_manifest = Deb::S3::Manifest.retrieve(options[:codename],
-                                               component, arch,
-                                               options[:cache_control],
-                                               false)
-    to_release = Deb::S3::Release.retrieve(to_codename)
-    to_manifest = Deb::S3::Manifest.retrieve(to_codename, to_component, arch,
-                                             options[:cache_control],
-                                             options[:fail_if_exists])
+    from_manifest = Deb::S3::Manifest.retrieve(
+      options[:codename], component, arch, options[:cache_control],
+      false, options[:acquire_by_hash])
+    to_release = Deb::S3::Release.retrieve(
+      to_codename, nil, nil, options[:cache_control],
+      options[:acquire_by_hash], options[:supported_archs])
+    to_manifest = Deb::S3::Manifest.retrieve(
+      to_codename, to_component, arch, options[:cache_control],
+      options[:fail_if_exists], options[:acquire_by_hash])
     packages = from_manifest.packages.select { |p|
       p.name == package_name &&
         (versions.nil? || versions.include?(p.full_version))
@@ -463,8 +486,13 @@ class Deb::S3::CLI < Thor
 
     # retrieve the existing manifests
     log("Retrieving existing manifests")
-    release  = Deb::S3::Release.retrieve(options[:codename], options[:origin], options[:suite])
-    manifest = Deb::S3::Manifest.retrieve(options[:codename], component, options[:arch], options[:cache_control], false)
+    release = Deb::S3::Release.retrieve(
+      options[:codename], options[:origin], options[:suite],
+      options[:cache_control], options[:acquire_by_hash],
+      options[:supported_archs])
+    manifest = Deb::S3::Manifest.retrieve(
+      options[:codename], component, options[:arch], options[:cache_control],
+      false, options[:acquire_by_hash])
 
     deleted = manifest.delete_package(package, versions)
     if deleted.length == 0
@@ -491,21 +519,25 @@ class Deb::S3::CLI < Thor
   desc "verify", "Verifies that the files in the package manifests exist"
 
   option :fix_manifests,
-  :default  => false,
-  :type     => :boolean,
-  :aliases  => "-f",
-  :desc     => "Whether to fix problems in manifests when verifying."
+    :default  => false,
+    :type     => :boolean,
+    :aliases  => "-f",
+    :desc     => "Whether to fix problems in manifests when verifying."
 
   def verify
     configure_s3_client
 
     log("Retrieving existing manifests")
-    release = Deb::S3::Release.retrieve(options[:codename], options[:origin], options[:suite])
+    release  = Deb::S3::Release.retrieve(
+      options[:codename], options[:origin], options[:suite],
+      options[:cache_control], options[:acquire_by_hash],
+      options[:supported_archs])
 
     release.architectures.each do |arch|
       log("Checking for missing packages in: #{options[:codename]}/#{options[:component]} #{arch}")
-      manifest = Deb::S3::Manifest.retrieve(options[:codename], component,
-                                            arch, options[:cache_control], false)
+      manifest = Deb::S3::Manifest.retrieve(
+        options[:codename], component, arch, options[:cache_control],
+        false, options[:acquire_by_hash])
       missing_packages = []
 
       manifest.packages.each do |p|

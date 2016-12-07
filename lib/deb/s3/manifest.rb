@@ -13,6 +13,7 @@ class Deb::S3::Manifest
   attr_accessor :architecture
   attr_accessor :fail_if_exists
   attr_accessor :skip_package_upload
+  attr_accessor :acquire_by_hash
 
   attr_accessor :files
 
@@ -28,11 +29,15 @@ class Deb::S3::Manifest
     @cache_control = ""
     @fail_if_exists = false
     @skip_package_upload = false
+    @acquire_by_hash = true
   end
 
   class << self
-    def retrieve(codename, component, architecture, cache_control, fail_if_exists, skip_package_upload=false)
-      m = if s = Deb::S3::Utils.s3_read("dists/#{codename}/#{component}/binary-#{architecture}/Packages")
+    def retrieve(
+        codename, component, architecture, cache_control, fail_if_exists,
+        skip_package_upload=false, acquire_by_hash=true)
+      m = if s = Deb::S3::Utils.s3_read(
+          "dists/#{codename}/#{component}/binary-#{architecture}/Packages")
         self.parse_packages(s)
       else
         self.new
@@ -44,6 +49,7 @@ class Deb::S3::Manifest
       m.cache_control = cache_control
       m.fail_if_exists = fail_if_exists
       m.skip_package_upload = skip_package_upload
+      m.acquire_by_hash = acquire_by_hash
       m
     end
 
@@ -110,24 +116,56 @@ class Deb::S3::Manifest
       end
     end
 
+    comp_path = "#{self.component}/binary-#{self.architecture}"
+    code_path = "#{self.codename}/#{comp_path}"
+    dist_path = "dists/#{code_path}"
+
     # generate the Packages file
-    pkgs_temp = Tempfile.new("Packages")
+    filename = 'Packages'
+    pkgs_temp = Tempfile.new(filename)
     pkgs_temp.write manifest
     pkgs_temp.close
-    f = "dists/#{@codename}/#{@component}/binary-#{@architecture}/Packages"
+    f = "#{dist_path}/#{filename}"
     yield f if block_given?
-    s3_store(pkgs_temp.path, f, 'text/plain; charset=UTF-8', self.cache_control)
-    @files["#{@component}/binary-#{@architecture}/Packages"] = hashfile(pkgs_temp.path)
+
+    checksums = hashfile(pkgs_temp.path)
+    @files["#{comp_path}/#{filename}"] = checksums
+
+    ct = 'text/plain; charset=UTF-8'
+    s3_store(pkgs_temp.path, f, ct, self.cache_control)
+    if self.acquire_by_hash
+      checksums.each do |type, checksum|
+        next if type == :size
+        type = type.to_s.upcase
+        type = "#{type}Sum" if type == 'MD5'
+        f = "#{dist_path}/by-hash/#{type}/#{checksum}"
+        s3_store(pkgs_temp.path, f, ct, self.cache_control)
+      end
+    end
     pkgs_temp.unlink
 
     # generate the Packages.gz file
-    gztemp = Tempfile.new("Packages.gz")
+    filename = 'Packages.gz'
+    gztemp = Tempfile.new(filename)
     gztemp.close
     Zlib::GzipWriter.open(gztemp.path) { |gz| gz.write manifest }
-    f = "dists/#{@codename}/#{@component}/binary-#{@architecture}/Packages.gz"
+    f = "#{dist_path}/#{filename}"
     yield f if block_given?
-    s3_store(gztemp.path, f, 'application/x-gzip; charset=binary', self.cache_control)
-    @files["#{@component}/binary-#{@architecture}/Packages.gz"] = hashfile(gztemp.path)
+
+    checksums = hashfile(gztemp.path)
+    @files["#{comp_path}/#{filename}"] = checksums
+
+    ct = 'application/x-gzip; charset=binary'
+    s3_store(gztemp.path, f, ct, self.cache_control)
+    if self.acquire_by_hash
+      checksums.each do |type, checksum|
+        next if type == :size
+        type = type.to_s.upcase
+        type = "#{type}Sum" if type == 'MD5'
+        f = "#{dist_path}/by-hash/#{type}/#{checksum}"
+        s3_store(gztemp.path, f, ct, self.cache_control)
+      end
+    end
     gztemp.unlink
 
     nil
@@ -137,7 +175,7 @@ class Deb::S3::Manifest
     {
       :size   => File.size(path),
       :sha1   => Digest::SHA1.file(path).hexdigest,
-      :sha256 => Digest::SHA2.file(path).hexdigest,
+      :sha256 => Digest::SHA256.file(path).hexdigest,
       :md5    => Digest::MD5.file(path).hexdigest
     }
   end

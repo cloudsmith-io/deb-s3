@@ -10,9 +10,12 @@ class Deb::S3::Release
   attr_accessor :architectures
   attr_accessor :components
   attr_accessor :cache_control
+  attr_accessor :supported_archs
+  attr_accessor :acquire_by_hash
 
   attr_accessor :files
   attr_accessor :policy
+  attr_accessor :signing_key
 
   def initialize
     @origin = nil
@@ -21,21 +24,27 @@ class Deb::S3::Release
     @architectures = []
     @components = []
     @cache_control = ""
+    @supported_archs = []
+    @acquire_by_hash = true
     @files = {}
     @policy = :public_read
+    @signing_key = Deb::S3::Utils.signing_key
   end
 
   class << self
-    def retrieve(codename, origin=nil, suite=nil, cache_control=nil)
+    def retrieve(codename, origin=nil, suite=nil, cache_control=nil,
+                 acquire_by_hash=true, supported_archs=[])
       if s = Deb::S3::Utils.s3_read("dists/#{codename}/Release")
         rel = self.parse_release(s)
       else
         rel = self.new
         rel.codename = codename
         rel.origin = origin unless origin.nil?
-        rel.suite = suite unless suite.nil?
+        rel.suite = suite.nil? ? codename : nil
       end
       rel.cache_control = cache_control
+      rel.supported_archs = supported_archs
+      rel.acquire_by_hash = acquire_by_hash
       rel
     end
 
@@ -101,8 +110,9 @@ class Deb::S3::Release
     s3_store(release_tmp.path, self.filename, 'text/plain; charset=UTF-8', self.cache_control)
 
     # sign the file, if necessary
-    if Deb::S3::Utils.signing_key
-      key_param = Deb::S3::Utils.signing_key != "" ? "--default-key=#{Deb::S3::Utils.signing_key}" : ""
+    # sign
+    if self.signing_key
+      key_param = self.signing_key != "" ? "--default-key=#{self.signing_key}" : ""
       if system("gpg -a #{key_param} #{Deb::S3::Utils.gpg_options} -b #{release_tmp.path}")
         local_file = release_tmp.path+".asc"
         remote_file = self.filename+".gpg"
@@ -130,13 +140,15 @@ class Deb::S3::Release
   def validate_others
     to_apply = []
     self.components.each do |comp|
-      %w(amd64 i386 armhf).each do |arch|
+      self.supported_archs.each do |arch|
         next if self.files.has_key?("#{comp}/binary-#{arch}/Packages")
 
         m = Deb::S3::Manifest.new
         m.codename = self.codename
         m.component = comp
         m.architecture = arch
+        m.cache_control = self.cache_control
+        m.acquire_by_hash = self.acquire_by_hash
         if block_given?
           m.write_to_s3 { |f| yield f }
         else

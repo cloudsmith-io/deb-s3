@@ -110,7 +110,6 @@ class Deb::S3::Release
     s3_store(release_tmp.path, self.filename, 'text/plain; charset=UTF-8', self.cache_control)
 
     # sign the file, if necessary
-    # sign
     if self.signing_key
       key_param = self.signing_key != "" ? "--default-key=#{self.signing_key}" : ""
       if system("gpg -a #{key_param} #{Deb::S3::Utils.gpg_options} -b #{release_tmp.path}")
@@ -120,8 +119,6 @@ class Deb::S3::Release
         raise "Unable to locate Release signature file" unless File.exists?(local_file)
         s3_store(local_file, remote_file, 'application/pgp-signature; charset=us-ascii', self.cache_control)
         File.unlink(local_file)
-      else
-        raise "Signing the Release file failed."
       end
     else
       # remove an existing Release.gpg, if it was there

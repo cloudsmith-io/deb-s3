@@ -75,8 +75,6 @@ Options:
                                                        # Default: main
       [--access-key-id=ACCESS_KEY_ID]                  # The access key for connecting to S3.
       [--secret-access-key=SECRET_ACCESS_KEY]          # The secret key for connecting to S3.
-      [--endpoint=ENDPOINT]                            # The region endpoint for connecting to S3.
-                                                       # Default: s3.amazonaws.com
       [--force-path-style], [--no-force-path-style]    # Use S3 path style instead of subdomains.
       [--proxy-uri=PROXY_URI]                          # The URI of the proxy to send service requests through.
       [--use-ssl], [--no-use-ssl]                      # Whether to use HTTP or HTTPS for request transport.
@@ -125,8 +123,6 @@ Options:
                                                      # Default: main
       [--access-key-id=ACCESS_KEY_ID]                # The access key for connecting to S3.
       [--secret-access-key=SECRET_ACCESS_KEY]        # The secret key for connecting to S3.
-      [--endpoint=ENDPOINT]                          # The region endpoint for connecting to S3.
-                                                     # Default: s3.amazonaws.com
       [--force-path-style], [--no-force-path-style]  # Use S3 path style instead of subdomains.
       [--proxy-uri=PROXY_URI]                        # The URI of the proxy to send service requests through.
       [--use-ssl], [--no-use-ssl]                    # Whether to use HTTP or HTTPS for request transport.
@@ -168,8 +164,6 @@ Options:
                                                      # Default: main
       [--access-key-id=ACCESS_KEY_ID]                # The access key for connecting to S3.
       [--secret-access-key=SECRET_ACCESS_KEY]        # The secret key for connecting to S3.
-      [--endpoint=ENDPOINT]                          # The region endpoint for connecting to S3.
-                                                     # Default: s3.amazonaws.com
       [--force-path-style], [--no-force-path-style]  # Use S3 path style instead of subdomains.
       [--proxy-uri=PROXY_URI]                        # The URI of the proxy to send service requests through.
       [--use-ssl], [--no-use-ssl]                    # Whether to use HTTP or HTTPS for request transport.

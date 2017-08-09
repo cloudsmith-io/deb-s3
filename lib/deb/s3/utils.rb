@@ -20,6 +20,8 @@ module Deb::S3::Utils
   def prefix= v; @prefix = v end
   def encryption; @encryption end
   def encryption= v; @encryption = v end
+  def encryption_algorithm; @encryption_algorithm end
+  def encryption_algorithm= v; @encryption_algorithm = v end
 
   class SafeSystemError < RuntimeError; end
   class AlreadyExistsError < RuntimeError; end
@@ -97,7 +99,9 @@ module Deb::S3::Utils
     end
 
     # specify if encryption is required
-    options[:server_side_encryption] = :aes256 if Deb::S3::Utils.encryption
+    if Deb::S3::Utils.encryption
+      options[:server_side_encryption] = Deb::S3::Utils.encryption_algorithm
+    end
 
     # upload the file
     File.open(path) do |f|

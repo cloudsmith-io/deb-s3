@@ -99,6 +99,12 @@ class Deb::S3::CLI < Thor
     :aliases  => "-e",
     :desc     => "Use S3 server side encryption."
 
+  class_option :encryption_algorithm,
+    :default  => 'AES256',
+    :type     => :string,
+    :aliases  => "-E",
+    :desc     => "Algorithm to use for server side encryption."
+
   class_option :quiet,
     :type => :boolean,
     :aliases => "-q",
@@ -616,12 +622,13 @@ class Deb::S3::CLI < Thor
     }
     settings.merge!(provider)
 
-    Deb::S3::Utils.s3          = Aws::S3::Client.new(settings)
-    Deb::S3::Utils.bucket      = options[:bucket]
-    Deb::S3::Utils.signing_key = options[:sign]
-    Deb::S3::Utils.gpg_options = options[:gpg_options]
-    Deb::S3::Utils.prefix      = options[:prefix]
-    Deb::S3::Utils.encryption  = options[:encryption]
+    Deb::S3::Utils.s3                   = Aws::S3::Client.new(settings)
+    Deb::S3::Utils.bucket               = options[:bucket]
+    Deb::S3::Utils.signing_key          = options[:sign]
+    Deb::S3::Utils.gpg_options          = options[:gpg_options]
+    Deb::S3::Utils.prefix               = options[:prefix]
+    Deb::S3::Utils.encryption           = options[:encryption]
+    Deb::S3::Utils.encryption_algorithm = options[:encryption_algorithm]
 
     # make sure we have a valid visibility setting
     Deb::S3::Utils.access_policy =

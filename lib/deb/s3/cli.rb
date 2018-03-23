@@ -88,6 +88,11 @@ class Deb::S3::CLI < Thor
       "or when verifying it after removing a package. " +
       "Use --sign with your key ID to use a specific key."
 
+  class_option :gpg_binary,
+    :default => "gpg2",
+    :type    => :string,
+    :desc    => "The GPG binary to use for signing."
+
   class_option :gpg_options,
     :default => "",
     :type    => :string,
@@ -273,6 +278,7 @@ class Deb::S3::CLI < Thor
         release.update_manifest(manifest)
       end
       release.write_to_s3 { |f| sublog("Transferring #{f}") }
+      release.write_to_s3(:inrelease => true) {|f| sublog("Transferring #{f}") }
 
       log("Update complete.")
     ensure
@@ -450,6 +456,7 @@ class Deb::S3::CLI < Thor
     end
     to_release.update_manifest(to_manifest)
     to_release.write_to_s3 { |f| sublog("Transferring #{f}") }
+    to_release.write_to_s3(:inrelease => true) {|f| sublog("Transferring #{f}") }
 
     log "Copy complete."
   end
@@ -517,6 +524,7 @@ class Deb::S3::CLI < Thor
     manifest.write_to_s3 {|f| sublog("Transferring #{f}") }
     release.update_manifest(manifest)
     release.write_to_s3 {|f| sublog("Transferring #{f}") }
+    release.write_to_s3(:inrelease => true) {|f| sublog("Transferring #{f}") }
 
     log("Update complete.")
   end
@@ -562,6 +570,7 @@ class Deb::S3::CLI < Thor
         manifest.write_to_s3 { |f| sublog("Transferring #{f}") }
         release.update_manifest(manifest)
         release.write_to_s3 { |f| sublog("Transferring #{f}") }
+        release.write_to_s3(:inrelease => true) {|f| sublog("Transferring #{f}") }
 
         log("Update complete.")
       end
@@ -625,6 +634,7 @@ class Deb::S3::CLI < Thor
     Deb::S3::Utils.s3                   = Aws::S3::Client.new(settings)
     Deb::S3::Utils.bucket               = options[:bucket]
     Deb::S3::Utils.signing_key          = options[:sign]
+    Deb::S3::Utils.gpg_binary           = options[:gpg_binary]
     Deb::S3::Utils.gpg_options          = options[:gpg_options]
     Deb::S3::Utils.prefix               = options[:prefix]
     Deb::S3::Utils.encryption           = options[:encryption]

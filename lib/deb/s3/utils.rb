@@ -14,6 +14,8 @@ module Deb::S3::Utils
   def access_policy= v; @access_policy = v end
   def signing_key; @signing_key end
   def signing_key= v; @signing_key = v end
+  def gpg_binary; @gpg_binary end
+  def gpg_binary= v; @gpg_binary = v end
   def gpg_options; @gpg_options end
   def gpg_options= v; @gpg_options = v end
   def prefix; @prefix end

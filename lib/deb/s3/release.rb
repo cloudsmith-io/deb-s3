@@ -15,7 +15,6 @@ class Deb::S3::Release
 
   attr_accessor :files
   attr_accessor :policy
-  attr_accessor :signing_key
 
   def initialize
     @origin = nil
@@ -28,7 +27,6 @@ class Deb::S3::Release
     @acquire_by_hash = true
     @files = {}
     @policy = :public_read
-    @signing_key = Deb::S3::Utils.signing_key
   end
 
   class << self
@@ -55,8 +53,16 @@ class Deb::S3::Release
     end
   end
 
-  def filename
-    "dists/#{@codename}/Release"
+  def filepath
+    "dists/#{@codename}"
+  end
+
+  def release_filepath
+    "#{self.filepath}/Release"
+  end
+
+  def inrelease_filepath
+    "#{self.filepath}/InRelease"
   end
 
   def parse(str)
@@ -94,7 +100,9 @@ class Deb::S3::Release
     template("release.erb").result(binding)
   end
 
-  def write_to_s3
+  def write_to_s3(options = {})
+    inrelease = options[:inrelease] ||= false
+
     # validate some other files are present
     if block_given?
       self.validate_others { |f| yield f }
@@ -102,29 +110,54 @@ class Deb::S3::Release
       self.validate_others
     end
 
-    # generate the Release file
+    # generate the Release files
     release_tmp = Tempfile.new("Release")
     release_tmp.puts self.generate
     release_tmp.close
-    yield self.filename if block_given?
-    s3_store(release_tmp.path, self.filename, 'text/plain; charset=UTF-8', self.cache_control)
+    release_mime_type = 'text/plain; charset=UTF-8'
+
+    filepath = inrelease ? self.inrelease_filepath : self.release_filepath
+    yield filepath if block_given?
 
     # sign the file, if necessary
-    if self.signing_key
-      key_param = self.signing_key != "" ? "--default-key=#{self.signing_key}" : ""
-      if system("gpg -a #{key_param} #{Deb::S3::Utils.gpg_options} -b #{release_tmp.path}")
-        local_file = release_tmp.path+".asc"
-        remote_file = self.filename+".gpg"
-        yield remote_file if block_given?
-        raise "Unable to locate Release signature file" unless File.exists?(local_file)
-        s3_store(local_file, remote_file, 'application/pgp-signature; charset=us-ascii', self.cache_control)
-        File.unlink(local_file)
+    signing_key = Deb::S3::Utils.signing_key
+    if signing_key
+      signed_mime_type = 'application/pgp-signature; charset=UTF-8'
+      signed_tmp = inrelease ? Tempfile.new("InRelease") : nil
+      gpg_binary = Deb::S3::Utils.gpg_binary
+      gpg_options = Deb::S3::Utils.gpg_options
+      gpg_options += inrelease ? " --clearsign -o #{signed_tmp.path}" : ' -b'
+      gpg_key = signing_key != "" ? "--default-key=#{signing_key}" : ""
+      gpg_cmd = "#{gpg_binary} -a #{gpg_key} #{gpg_options} #{release_tmp.path}"
+
+      if system(gpg_cmd)
+        if inrelease
+          release_mime_type = signed_mime_type
+          FileUtils.cp_r(signed_tmp.path, release_tmp.path, remove_destination: true)
+        else
+          local_file = release_tmp.path + '.asc'
+          remote_file = filepath + '.gpg'
+          yield remote_file if block_given?
+          raise "Unable to locate #{filepath} signature file" unless File.exists?(local_file)
+          s3_store(local_file, remote_file, signed_mime_type, self.cache_control)
+          File.unlink(local_file)
+        end
+      else
+        raise "Signing the #{filepath} file failed."
+      end
+
+      if signed_tmp != nil
+        signed_tmp.close
+        signed_tmp.unlink
       end
     else
       # remove an existing Release.gpg, if it was there
-      s3_remove(self.filename+".gpg")
+      unless inrelease
+        s3_remove(filepath + '.gpg')
+      end
     end
 
+    s3_store(release_tmp.path, filepath, release_mime_type, self.cache_control)
     release_tmp.unlink
   end
 

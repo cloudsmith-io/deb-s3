@@ -490,8 +490,7 @@ class Deb::S3::CLI < Thor
       log("Versions to delete: #{versions.join(', ')}")
     end
 
-    arch = options[:arch]
-    if arch.nil?
+    if options[:arch].nil?
       error("You must specify the architecture of the package to remove.")
     end
 
@@ -503,30 +502,50 @@ class Deb::S3::CLI < Thor
       options[:codename], options[:origin], options[:suite],
       options[:cache_control], options[:acquire_by_hash],
       options[:supported_archs])
-    manifest = Deb::S3::Manifest.retrieve(
-      options[:codename], component, options[:arch], options[:cache_control],
-      false, options[:acquire_by_hash])
 
-    deleted = manifest.delete_package(package, versions)
+    archs =
+      if options[:arch] == 'all'
+        release.architectures
+      else
+        []
+      end
+    archs << options[:arch]
+
+    manifests = {}
+    archs.each do |arch|
+      manifests[arch] = Deb::S3::Manifest.retrieve(
+        options[:codename], component, arch, options[:cache_control],
+        false, false, options[:acquire_by_hash]
+      )
+    end
+
+    deleted = []
+    manifests.each do |arch, manifest|
+      deleted.concat(manifest.delete_package(package, versions))
+    end
+
     if deleted.length == 0
-        if versions.nil?
-            error("No packages were deleted. #{package} not found.")
-        else
-            error("No packages were deleted. #{package} versions #{versions.join(', ')} could not be found.")
-        end
+      if versions.nil?
+        error("No packages were deleted. #{package} not found.")
+      else
+        error("No packages were deleted. #{package} versions #{versions.join(', ')} could not be found.")
+      end
     else
-        deleted.each { |p|
-            sublog("Deleting #{p.name} version #{p.full_version}")
-        }
+      deleted.each { |p|
+        sublog("Deleting #{p.name} version #{p.full_version}")
+      }
     end
 
     log("Uploading new manifests to S3")
-    manifest.write_to_s3 {|f| sublog("Transferring #{f}") }
-    release.update_manifest(manifest)
+    manifests.each do |arch, manifest|
+      manifest.write_to_s3 {|f| sublog("Transferring #{f}") }
+      release.update_manifest(manifest)
+    end
+
     release.write_to_s3 {|f| sublog("Transferring #{f}") }
     release.write_to_s3(:inrelease => true) {|f| sublog("Transferring #{f}") }
 
-    log("Update complete.")
+    log("Delete complete.")
   end
 
 
